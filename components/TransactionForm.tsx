@@ -6,7 +6,11 @@ import { Transaction } from "@/types";
 
 const categories = ["Food", "Transport", "Bills", "Shopping", "Other"];
 
-export default function TransactionForm({ onAdd }: { onAdd: (t: Transaction) => void }) {
+export default function TransactionForm({
+  onAdd,
+}: {
+  onAdd: (t: Transaction) => void;
+}) {
   const [form, setForm] = useState({
     description: "",
     amount: "",
@@ -14,42 +18,46 @@ export default function TransactionForm({ onAdd }: { onAdd: (t: Transaction) => 
     category: categories[0],
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Optional validation
-    if (!form.description || !form.amount || !form.date) {
-      alert("Please fill in all fields");
+    // Validation
+    if (!form.description || !form.amount || !form.date || !form.category) {
+      alert("Please fill in all fields.");
       return;
     }
 
-    const res = await fetch("/api/transactions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...form,
-        amount: parseFloat(form.amount),
-        date: new Date(form.date).toISOString(), // Ensure ISO format for cross-platform compatibility
-      }),
-    });
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...form,
+          amount: parseFloat(form.amount),
+          date: new Date(form.date).toISOString(), // ISO format
+        }),
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      alert(`Failed to add transaction: ${error.message || "Unknown error"}`);
-      return;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Unknown error");
+      }
+
+      const data = await res.json();
+      onAdd(data);
+
+      // Reset form
+      setForm({
+        description: "",
+        amount: "",
+        date: "",
+        category: categories[0],
+      });
+    } catch (error: any) {
+      alert(`Failed to add transaction: ${error.message}`);
     }
-
-    const data = await res.json();
-    onAdd(data);
-
-    setForm({
-      description: "",
-      amount: "",
-      date: "",
-      category: categories[0],
-    });
   };
 
   return (
@@ -76,7 +84,9 @@ export default function TransactionForm({ onAdd }: { onAdd: (t: Transaction) => 
         onChange={(e) => setForm({ ...form, category: e.target.value })}
       >
         {categories.map((cat) => (
-          <option key={cat}>{cat}</option>
+          <option key={cat} value={cat}>
+            {cat}
+          </option>
         ))}
       </select>
       <Button type="submit">Add</Button>

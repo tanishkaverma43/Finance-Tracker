@@ -3,22 +3,17 @@ import { db } from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  try {
-    const data = await db.collection("transactions").find({}).toArray();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("GET transactions error:", error);
-    return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
-  }
+  const database = await db;
+  const data = await database.collection("transactions").find({}).toArray();
+  return NextResponse.json(data);
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Optional: Simple validation
-    if (!body.title || !body.amount || !body.date || !body.category) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!body.description || !body.amount || !body.date || !body.category) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
     const transaction = {
@@ -27,11 +22,12 @@ export async function POST(req: Request) {
       date: new Date(body.date),
     };
 
-    const res = await db.collection("transactions").insertOne(transaction);
-    return NextResponse.json({ _id: res.insertedId, ...transaction });
+    const database = await db;
+    const res = await database.collection("transactions").insertOne(transaction);
 
-  } catch (error) {
-    console.error("POST transactions error:", error);
-    return NextResponse.json({ error: "Failed to add transaction" }, { status: 500 });
+    return NextResponse.json({ _id: res.insertedId, ...transaction });
+  } catch (err) {
+    console.error("Error in POST /api/transactions:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
